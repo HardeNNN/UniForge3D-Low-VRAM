@@ -98,6 +98,13 @@ def main() -> int:
     parser.add_argument("--prefetch", action="store_true", help="load later stages on the worker thread")
     args = parser.parse_args()
 
+    if not args.config.is_file():
+        print(
+            f"[check] no config at {args.config}: "
+            "run .venv\\Scripts\\python.exe scripts\\make_local_config.py first"
+        )
+        return 1
+
     weights_dtype = None if args.weights_dtype == "auto" else args.weights_dtype
     pipeline = UniForge3DImageTo3DPipeline.from_config(
         args.config, weights_dtype=weights_dtype, low_ram=args.low_ram, prefetch=args.prefetch

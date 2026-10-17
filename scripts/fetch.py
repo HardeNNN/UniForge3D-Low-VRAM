@@ -239,6 +239,25 @@ WHEEL_FILES = [
     ),
 ]
 
+# The CUDA extensions are the prebuilt cp311 wheels that the TRELLIS.2-stableprojectorz project
+# publishes in its own whl/ directory. They need no nvcc and no build step, and nothing else
+# publishes them, so they are fetched from that repository by path.
+EXTENSION_WHEEL_NAMES = (
+    "cumesh-0.0.1-cp311-cp311-win_amd64.whl",
+    "flex_gemm-0.0.1-cp311-cp311-win_amd64.whl",
+    "o_voxel-0.0.1-cp311-cp311-win_amd64.whl",
+    "nvdiffrast-0.4.0-cp311-cp311-win_amd64.whl",
+    "nvdiffrec_render-0.0.0-cp311-cp311-win_amd64.whl",
+)
+EXTENSION_WHEELS = [
+    (
+        "https://raw.githubusercontent.com/IgorAherne/TRELLIS.2-stableprojectorz/main/whl/"
+        f"{name}",
+        ROOT / "whl" / name,
+    )
+    for name in EXTENSION_WHEEL_NAMES
+]
+
 EXTRA_ZIPS = [
     (
         "https://github.com/IgorAherne/TRELLIS.2-stableprojectorz/releases/download/extra-models/dinov3.zip",
@@ -305,7 +324,15 @@ def build_jobs(group: str, manifest: Manifest, chunk_mb: int) -> list[Job]:
                     )
                 )
     if group in ("wheels", "all"):
-        for url, dest in WHEEL_FILES:
+        # Every wheel here is cp311, and the triton wheel is resolved by the running
+        # interpreter's own tag, so a different Python would assemble an environment that
+        # cannot run. Say so now rather than 3 GB into the download.
+        if sys.version_info[:2] != (3, 11):
+            raise SystemExit(
+                "these wheels are cp311: run this with Python 3.11, not "
+                f"{sys.version_info[0]}.{sys.version_info[1]} ({sys.executable})"
+            )
+        for url, dest in WHEEL_FILES + EXTENSION_WHEELS:
             jobs.append(Job(url, dest, head_size(url), chunk_mb=chunk_mb))
         triton_url = pypi_wheel_url("triton-windows", "3.4.0.post21")
         jobs.append(Job(triton_url, ROOT / "whl" / triton_url.rsplit("/", 1)[-1], head_size(triton_url)))

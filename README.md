@@ -20,7 +20,7 @@ method, in [WINDOWS_LOWVRAM.md](WINDOWS_LOWVRAM.md).
 | | |
 | --- | --- |
 | Input | 2-4 photos of one object, any order — the views are sparse and unposed |
-| Output | `prediction.glb` with baked PBR textures, plus the two texture maps as PNGs |
+| Output | `prediction.glb` with baked PBR textures, plus the two texture maps as PNGs with `--save-textures` |
 | Time | ~240 s per case at the shipped step counts (`assets/case01`); the most detailed examples take up to about four times that |
 | First step | 21 s after launch, instead of waiting 102 s for the whole stack to load |
 | VRAM | peaks at 6.3 GB of denoiser residency on an 8 GB card |
@@ -31,7 +31,11 @@ method, in [WINDOWS_LOWVRAM.md](WINDOWS_LOWVRAM.md).
 
 - **Prebuilt wheels instead of source builds.** Every CUDA extension — CuMesh, FlexGEMM,
   `o_voxel`, nvdiffrast, flash-attn — comes from a `cp311 win_amd64` wheel. There is no
-  nvcc, no conda and no 30-minute flash-attn build.
+  nvcc, no conda and no 30-minute flash-attn build. `scripts/fetch.py wheels` pulls all of
+  them: torch and torchvision from the PyTorch index, flash-attn from its prebuild releases,
+  and the five extensions from the `whl/` directory of the
+  [TRELLIS.2-stableprojectorz](https://github.com/IgorAherne/TRELLIS.2-stableprojectorz)
+  repository, which is where they are published.
 - **Staged fp16 residency for 8 GB.** Denoiser weights are fp16, each stage is moved onto the
   card only for its own steps, and the decoders keep an explicit fp32 boundary. Peak denoiser
   residency falls from about 12 GB to 6.3 GB.
@@ -77,9 +81,9 @@ method, in [WINDOWS_LOWVRAM.md](WINDOWS_LOWVRAM.md).
 ```powershell
 git clone https://github.com/HardeNNN/UniForge3D-Low-VRAM
 cd UniForge3D-Low-VRAM
-python scripts\fetch.py wheels      # torch 2.8.0+cu128, torchvision, triton, flash-attn -> whl/
+python scripts\fetch.py wheels      # torch, torchvision, flash-attn and the 5 CUDA extension wheels -> whl/
 scripts\install_windows.ps1         # venv + local wheels + pinned dependencies + web UI
-python scripts\fetch.py weights     # the 22 model files -> weights/  (~30 GB)
+python scripts\fetch.py weights     # the 17 model files -> weights/  (~30 GB)
 python scripts\fetch.py extras      # dinov3 + RMBG-2.0 -> models/   (unzips on completion)
 python scripts\make_local_config.py # weights/pipeline.local.json
 ```
@@ -93,7 +97,9 @@ scripts\convert_weights_fp16.bat    # convert, verify, switch over; revert_weigh
 
 Every step is resumable: re-run it after an interruption and it continues from what is
 already on disk. `fetch.py` also takes `--jobs N` (files at once) and `--connections N`
-(range chunks in flight). Finish with `scripts\check_env.py` (below).
+(range chunks in flight). Run the download steps with **Python 3.11** — every wheel here is
+`cp311`, and `fetch.py wheels` says so instead of assembling an environment that cannot run.
+Finish with `scripts\check_env.py` (below).
 
 ## Web UI
 
@@ -136,13 +142,15 @@ already exists is skipped, so a batch is resumable. `--limit N`, `--overwrite`, 
 `--watch SECONDS`, `--save-textures`, `--low-ram`, `--prefetch` and the precision flags are
 listed in section 3 of the notes.
 
-`--weights-dtype float32` and `auto` keep each checkpoint in the precision it was published
-with, which the half-precision copies cannot provide. Point those runs at a config built for
-the originals instead:
+`--weights-dtype float16` (the default under `--low-vram`), `float32` and `auto`. `auto`
+means "whatever the mode would use anyway": fp16 with the default `--low-vram`, and each
+checkpoint's published precision with `--no-low-vram`. Only the last of those is
+checkpoint-faithful, and the half-precision copies cannot provide it either, so point those
+runs at a config built for the originals:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\make_local_config.py --fp32 --out weights\pipeline.local.fp32.json
-.\.venv\Scripts\python.exe infer.py --config weights\pipeline.local.fp32.json --weights-dtype auto
+.\.venv\Scripts\python.exe infer.py --config weights\pipeline.local.fp32.json --weights-dtype float32
 ```
 
 On the tested machine the first denoiser step starts 21 s in, and one case costs about 240 s
@@ -168,12 +176,12 @@ Every claim above has a script. They run on CPU unless noted, and most take a se
 
 | Script | What it checks |
 | --- | --- |
-| `scripts\check_env.py [--config …]` | imports, the eight CUDA wheels, CUDA, then loads every model group and reports which weight set is in use |
+| `scripts\check_env.py [--config …]` | imports, every CUDA wheel, CUDA, then loads every model group and reports which weight set is in use |
 | `scripts\check_glb.py FILE.glb` | meshes, materials, images, attributes and bounding box of a result |
 | `scripts\check_stage_loading.py [--low-ram] [--prefetch]` | walks the six groups in stage order and asserts exactly what is resident after each one |
 | `scripts\check_model_store.py` | the residency store itself — lazy build, prefetch order, release, one build shared by concurrent callers; fake groups, no weights, about a second |
 | `scripts\check_fp16_weights.py` | loads every group through both configs and fails on one differing bit; about five minutes, CPU |
-| `scripts\profile_load.py --config …` | per-group load time and memory |
+| `scripts\profile_load.py --config …` | per-group load time |
 | `scripts\bench_fp16_stage1.py --arm shipped\|all-fp16` | what the fp32-pinned weights cost stage 1 (answer: about 1%) |
 | `scripts\check_stage1_repeat.py` | runs stage 1 repeatedly in one process and reports the intermittent second-call failure |
 
@@ -232,6 +240,10 @@ which carry commercial-use conditions. Read those model cards before commercial 
   CUDA illegal access.** Both are intermittent and land on a second stage-1 run inside one
   process; re-run the case. `scripts\check_stage1_repeat.py` is the harness that looks for it
   (section 5 of the notes).
+- **`python infer.py` with no `--config` starts downloading from Hugging Face.** Without it,
+  infer.py falls back to the upstream `--model xibushu/UniForge3D` path. Pass
+  `--config weights\pipeline.local.json`, which is what the install produces and what every
+  command above uses.
 
 ## Acknowledgements
 

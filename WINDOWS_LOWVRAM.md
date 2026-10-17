@@ -29,12 +29,15 @@ resuming each chunk it has to retry. Plain `pip` and `huggingface_hub` transfers
 on long downloads over this link, so keep the fetch separate from the install.
 
 ```powershell
-python scripts\fetch.py wheels          # torch 2.8.0+cu128, torchvision, triton, flash-attn  -> whl/
+python scripts\fetch.py wheels          # torch, torchvision, flash-attn, the 5 CUDA extension wheels -> whl/
 scripts\install_windows.ps1             # venv + local wheels + pinned dependencies
-python scripts\fetch.py weights         # the 22 model files -> weights/  (~30 GB)
+python scripts\fetch.py weights         # the 17 model files -> weights/  (~30 GB)
 python scripts\fetch.py extras          # dinov3 + RMBG-2.0 -> models/   (unzips on completion)
 python scripts\make_local_config.py     # weights/pipeline.local.json
 ```
+
+The wheels are all `cp311`, and `fetch.py wheels` refuses to run under another Python rather
+than assemble an environment the extensions cannot load into.
 
 `fetch.py` is resumable: re-run it after an interruption and it continues from the parts
 already on disk. `--jobs N` fetches N files at once, `--connections N` sets how many
@@ -62,7 +65,7 @@ Hub reference rewritten to a local file, so inference never contacts the Hub.
 | Flag | Effect |
 | --- | --- |
 | `--low-vram` / `--no-low-vram` | staged residency + fp16 weights (default on). |
-| `--weights-dtype {float16,float32,auto}` | weight precision for the denoisers; `auto` keeps the published precision. |
+| `--weights-dtype {float16,float32,auto}` | weight precision for the denoisers; `auto` takes whatever the residency mode does anyway, which is fp16 under the default `--low-vram` and each checkpoint's published precision with `--no-low-vram`. |
 | `--device N` | CUDA device index. |
 | `--limit N` | process at most N cases that do not have a result yet. |
 | `--overwrite` | recompute cases that already have a `prediction.glb`. |

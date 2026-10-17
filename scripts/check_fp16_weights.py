@@ -85,9 +85,9 @@ def main() -> int:
 
     copies = make_local_config.half_precision_copies()
     if not copies:
-        print("[check] no half-precision copies found: nothing to compare")
-        print("[check] run scripts\\convert_weights_fp16.py first")
-        return 0
+        print("[check] no half-precision copies found: nothing was verified")
+        print("[check] run scripts\\convert_weights_fp16.py first if you meant to check them")
+        return 1
 
     problems: list[str] = []
     with tempfile.TemporaryDirectory() as directory:

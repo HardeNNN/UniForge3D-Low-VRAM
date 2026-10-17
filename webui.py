@@ -254,7 +254,7 @@ def main() -> int:
         "--weights-dtype",
         default=None,
         help="weight precision for the denoisers: float16 (default on --low-vram), "
-             "float32, or a checkpoint-faithful 'auto'",
+             "float32, or 'auto' for whatever the residency mode uses anyway",
     )
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=7860)

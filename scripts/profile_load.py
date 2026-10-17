@@ -54,6 +54,13 @@ def main() -> int:
     parser.add_argument("--weights-dtype", default="float16")
     args = parser.parse_args()
 
+    if not args.config.is_file():
+        print(
+            f"[profile] no config at {args.config}: "
+            "run .venv\\Scripts\\python.exe scripts\\make_local_config.py first"
+        )
+        return 1
+
     for name in (
         "_read_weights",
         "_load_structure_weights",

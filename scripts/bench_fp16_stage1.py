@@ -64,6 +64,13 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
+    if not CONFIG.is_file():
+        print(
+            f"[ab] no config at {CONFIG}: "
+            "run .venv\\Scripts\\python.exe scripts\\make_local_config.py first"
+        )
+        return 1
+
     pipeline = UniForge3DImageTo3DPipeline.from_config(
         CONFIG, weights_dtype=torch.float16, prefetch=False
     )

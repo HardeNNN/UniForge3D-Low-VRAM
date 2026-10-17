@@ -60,7 +60,7 @@ def main() -> None:
         "--weights-dtype",
         default=None,
         help="weight precision for the denoisers: float16 (default on --low-vram), "
-             "float32, or a checkpoint-faithful 'auto'",
+             "float32, or 'auto' for whatever the residency mode uses anyway",
     )
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--limit", type=int, default=None, help="run at most this many cases")
