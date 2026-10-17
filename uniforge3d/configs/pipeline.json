@@ -1,0 +1,714 @@
+{
+  "external_models": {
+    "dino": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+    "rembg": "briaai/RMBG-2.0"
+  },
+  "sparse_structure": {
+    "sampler": {
+      "args": {
+        "sigma_min": 1e-05
+      },
+      "params": {
+        "steps": 12,
+        "guidance_strength": 7.5,
+        "guidance_interval": [
+          0.6,
+          1
+        ],
+        "guidance_rescale": 0.7,
+        "rescale_t": 5
+      }
+    },
+    "model": {
+      "name": "JointDiTVGGTStage1Model",
+      "args": {
+        "dit_args": {
+          "resolution": 16,
+          "in_channels": 8,
+          "out_channels": 8,
+          "model_channels": 1536,
+          "cond_channels": 1024,
+          "num_blocks": 30,
+          "num_heads": 12,
+          "mlp_ratio": 5.3334,
+          "pe_mode": "rope",
+          "share_mod": true,
+          "initialization": "scaled",
+          "qk_rms_norm": true,
+          "qk_rms_norm_cross": true
+        },
+        "dino_image_size": 512,
+        "vggt_img_size": 518,
+        "vggt_patch_size": 14,
+        "anchor_view": 0,
+        "fusion_vggt_layers": [
+          4,
+          7,
+          11,
+          14,
+          17,
+          19,
+          21,
+          23
+        ],
+        "fusion_dit_blocks": [
+          7,
+          10,
+          13,
+          16,
+          19,
+          22,
+          25,
+          28
+        ],
+        "cond_fusion_hidden_dim": 1024,
+        "dit_to_vggt_gate_cap": 1
+      }
+    },
+    "decoder": {
+      "normalization": null,
+      "checkpoint": {
+        "repo_id": "microsoft/TRELLIS-image-large",
+        "filename": "ckpts/ss_dec_conv3d_16l8_fp16",
+        "revision": "25e0d31ffbebe4b5a97464dd851910efc3002d96"
+      }
+    },
+    "weights": {
+      "dit_base": {
+        "repo_id": "microsoft/TRELLIS.2-4B",
+        "filename": "ckpts/ss_flow_img_dit_1_3B_64_bf16.safetensors",
+        "revision": "af44b45f2e35a493886929c6d786e563ec68364d"
+      },
+      "vggt_base": "uniforge3d/vggt/uniforge3d_stage1_structure_vggt_backbone.pt",
+      "dit_lora": {
+        "rank": 64,
+        "alpha": 128,
+        "target_modules": [
+          "blocks.*.self_attn.to_qkv",
+          "blocks.*.self_attn.to_out",
+          "blocks.*.cross_attn.to_q",
+          "blocks.*.cross_attn.to_kv",
+          "blocks.*.cross_attn.to_out"
+        ]
+      },
+      "vggt_lora": {
+        "rank": 32,
+        "alpha": 32,
+        "target_modules": [
+          "aggregator.frame_blocks.*.attn.qkv",
+          "aggregator.frame_blocks.*.attn.proj",
+          "aggregator.frame_blocks.*.mlp.fc1",
+          "aggregator.frame_blocks.*.mlp.fc2",
+          "aggregator.global_blocks.*.attn.qkv",
+          "aggregator.global_blocks.*.attn.proj",
+          "aggregator.global_blocks.*.mlp.fc1",
+          "aggregator.global_blocks.*.mlp.fc2",
+          "point_head*"
+        ]
+      },
+      "checkpoint": "uniforge3d/stage1/uniforge3d_stage1_structure_joint_model.pt"
+    }
+  },
+  "structured_latent_512": {
+    "sampler": {
+      "name": "cfg",
+      "args": {
+        "sigma_min": 1e-05
+      },
+      "params": {
+        "steps": 20,
+        "guidance_strength": 3,
+        "guidance_rescale": 0,
+        "rescale_t": 1
+      }
+    },
+    "model": {
+      "name": "VGGTConditionedSLatFlowModel",
+      "args": {
+        "denoiser_args": {
+          "resolution": 32,
+          "in_channels": 32,
+          "out_channels": 32,
+          "model_channels": 1536,
+          "cond_channels": 1024,
+          "num_blocks": 30,
+          "num_heads": 12,
+          "mlp_ratio": 5.3334,
+          "pe_mode": "rope",
+          "share_mod": true,
+          "initialization": "scaled",
+          "qk_rms_norm": true,
+          "qk_rms_norm_cross": true,
+          "routed_layers": [
+            5,
+            7,
+            10,
+            12,
+            15,
+            17,
+            20,
+            22,
+            25,
+            27
+          ]
+        },
+        "adapter_args": {
+          "feature_layers": [
+            4,
+            11,
+            17,
+            23
+          ],
+          "feature_dim": 2048,
+          "per_layer_dim": 1024,
+          "hidden_dim": 4096,
+          "output_dim": 1024
+        }
+      }
+    },
+    "decoder": {
+      "resolution": 512,
+      "normalization": {
+        "mean": [
+          0.781296,
+          0.018091,
+          -0.495192,
+          -0.558457,
+          1.06053,
+          0.093252,
+          1.518149,
+          -0.933218,
+          -0.732996,
+          2.604095,
+          -0.118341,
+          -2.143904,
+          0.495076,
+          -2.179512,
+          -2.130751,
+          -0.996944,
+          0.261421,
+          -2.217463,
+          1.260067,
+          -0.150213,
+          3.790713,
+          1.481266,
+          -1.046058,
+          -1.523667,
+          -0.059621,
+          2.22078,
+          1.621212,
+          0.87723,
+          0.567247,
+          -3.175944,
+          -3.186688,
+          1.578665
+        ],
+        "std": [
+          5.972266,
+          4.706852,
+          5.44501,
+          5.209927,
+          5.32022,
+          4.547237,
+          5.020802,
+          5.444004,
+          5.226681,
+          5.683095,
+          4.831436,
+          5.286469,
+          5.652043,
+          5.367606,
+          5.525084,
+          4.730578,
+          4.805265,
+          5.124013,
+          5.530808,
+          5.619001,
+          5.10393,
+          5.41767,
+          5.269677,
+          5.547194,
+          5.634698,
+          5.235274,
+          6.110351,
+          5.511298,
+          6.237273,
+          4.879207,
+          5.347008,
+          5.405691
+        ]
+      },
+      "checkpoint": {
+        "repo_id": "microsoft/TRELLIS.2-4B",
+        "filename": "ckpts/shape_dec_next_dc_f16c32_fp16",
+        "revision": "af44b45f2e35a493886929c6d786e563ec68364d"
+      }
+    },
+    "conditioning": {
+      "image_size": 512,
+      "grid_resolution": 32
+    },
+    "weights": {
+      "checkpoint": "uniforge3d/shape512/uniforge3d_stage2_shape512_denoiser.pt",
+      "adapter_checkpoint": "uniforge3d/shape512/uniforge3d_stage2_shape512_vggt_adapter.pt",
+      "lora": {
+        "r": 128,
+        "lora_alpha": 256,
+        "lora_dropout": 0,
+        "target_modules": [
+          "to_q",
+          "to_kv",
+          "to_out",
+          "to_qkv"
+        ],
+        "bias": "none"
+      }
+    }
+  },
+  "structured_latent_1024": {
+    "sampler": {
+      "name": "cfg",
+      "args": {
+        "sigma_min": 1e-05
+      },
+      "params": {
+        "steps": 20,
+        "guidance_strength": 6.5,
+        "guidance_rescale": 0.3,
+        "rescale_t": 1
+      }
+    },
+    "model": {
+      "name": "VGGTConditionedSLatFlowModel",
+      "args": {
+        "denoiser_args": {
+          "resolution": 64,
+          "in_channels": 32,
+          "out_channels": 32,
+          "model_channels": 1536,
+          "cond_channels": 1024,
+          "num_blocks": 30,
+          "num_heads": 12,
+          "mlp_ratio": 5.3334,
+          "pe_mode": "rope",
+          "share_mod": true,
+          "initialization": "scaled",
+          "qk_rms_norm": true,
+          "qk_rms_norm_cross": true,
+          "routed_layers": [
+            5,
+            7,
+            10,
+            12,
+            15,
+            17,
+            20,
+            22,
+            25,
+            27
+          ]
+        },
+        "adapter_args": {
+          "feature_layers": [
+            4,
+            11,
+            17,
+            23
+          ],
+          "feature_dim": 2048,
+          "per_layer_dim": 1024,
+          "hidden_dim": 4096,
+          "output_dim": 1024,
+          "input_patch_grid_size": 32,
+          "upsample_scale": 2
+        }
+      }
+    },
+    "decoder": {
+      "resolution": 1024,
+      "normalization": {
+        "mean": [
+          0.781296,
+          0.018091,
+          -0.495192,
+          -0.558457,
+          1.06053,
+          0.093252,
+          1.518149,
+          -0.933218,
+          -0.732996,
+          2.604095,
+          -0.118341,
+          -2.143904,
+          0.495076,
+          -2.179512,
+          -2.130751,
+          -0.996944,
+          0.261421,
+          -2.217463,
+          1.260067,
+          -0.150213,
+          3.790713,
+          1.481266,
+          -1.046058,
+          -1.523667,
+          -0.059621,
+          2.22078,
+          1.621212,
+          0.87723,
+          0.567247,
+          -3.175944,
+          -3.186688,
+          1.578665
+        ],
+        "std": [
+          5.972266,
+          4.706852,
+          5.44501,
+          5.209927,
+          5.32022,
+          4.547237,
+          5.020802,
+          5.444004,
+          5.226681,
+          5.683095,
+          4.831436,
+          5.286469,
+          5.652043,
+          5.367606,
+          5.525084,
+          4.730578,
+          4.805265,
+          5.124013,
+          5.530808,
+          5.619001,
+          5.10393,
+          5.41767,
+          5.269677,
+          5.547194,
+          5.634698,
+          5.235274,
+          6.110351,
+          5.511298,
+          6.237273,
+          4.879207,
+          5.347008,
+          5.405691
+        ]
+      },
+      "checkpoint": {
+        "repo_id": "microsoft/TRELLIS.2-4B",
+        "filename": "ckpts/shape_dec_next_dc_f16c32_fp16",
+        "revision": "af44b45f2e35a493886929c6d786e563ec68364d"
+      }
+    },
+    "conditioning": {
+      "image_size": 1024,
+      "grid_resolution": 64
+    },
+    "weights": {
+      "checkpoint": "uniforge3d/shape1024/uniforge3d_stage2_shape1024_denoiser.pt",
+      "adapter_checkpoint": "uniforge3d/shape1024/uniforge3d_stage2_shape1024_vggt_adapter.pt",
+      "lora": {
+        "r": 128,
+        "lora_alpha": 256,
+        "lora_dropout": 0,
+        "target_modules": [
+          "to_q",
+          "to_kv",
+          "to_out",
+          "to_qkv"
+        ],
+        "bias": "none"
+      }
+    }
+  },
+  "structured_latent_handoff": {
+    "target_max_side": 0.9998,
+    "surface_voxel_resolution": 64
+  },
+  "mesh_postprocess": {
+    "grid_size": 1024,
+    "pre_simplify_target": 16777216,
+    "decimation_target": 1000000,
+    "remesh_band": 1,
+    "remesh_project": 0
+  },
+  "texture": {
+    "resolution": 1024,
+    "texture_size": 2048,
+    "decimation_target": 1000000,
+    "model": {
+      "name": "VGGTConditionedSLatFlowModel",
+      "args": {
+        "denoiser_args": {
+          "resolution": 64,
+          "in_channels": 64,
+          "out_channels": 32,
+          "model_channels": 1536,
+          "cond_channels": 1024,
+          "num_blocks": 30,
+          "num_heads": 12,
+          "mlp_ratio": 5.3334,
+          "pe_mode": "rope",
+          "share_mod": true,
+          "initialization": "scaled",
+          "qk_rms_norm": true,
+          "qk_rms_norm_cross": true,
+          "routed_layers": [
+            5,
+            7,
+            10,
+            12,
+            15,
+            17,
+            20,
+            22,
+            25,
+            27
+          ]
+        },
+        "adapter_args": {
+          "feature_layers": [
+            4,
+            11,
+            17,
+            23
+          ],
+          "feature_dim": 2048,
+          "per_layer_dim": 1024,
+          "hidden_dim": 4096,
+          "output_dim": 1024,
+          "input_patch_grid_size": 32,
+          "upsample_scale": 2
+        }
+      }
+    },
+    "sampler": {
+      "args": {
+        "sigma_min": 1e-05
+      },
+      "params": {
+        "steps": 20,
+        "guidance_strength": 2.5,
+        "guidance_interval": [
+          0,
+          1
+        ],
+        "guidance_rescale": 0,
+        "rescale_t": 1.5
+      }
+    },
+    "shape_slat_normalization": {
+      "mean": [
+        0.781296,
+        0.018091,
+        -0.495192,
+        -0.558457,
+        1.06053,
+        0.093252,
+        1.518149,
+        -0.933218,
+        -0.732996,
+        2.604095,
+        -0.118341,
+        -2.143904,
+        0.495076,
+        -2.179512,
+        -2.130751,
+        -0.996944,
+        0.261421,
+        -2.217463,
+        1.260067,
+        -0.150213,
+        3.790713,
+        1.481266,
+        -1.046058,
+        -1.523667,
+        -0.059621,
+        2.22078,
+        1.621212,
+        0.87723,
+        0.567247,
+        -3.175944,
+        -3.186688,
+        1.578665
+      ],
+      "std": [
+        5.972266,
+        4.706852,
+        5.44501,
+        5.209927,
+        5.32022,
+        4.547237,
+        5.020802,
+        5.444004,
+        5.226681,
+        5.683095,
+        4.831436,
+        5.286469,
+        5.652043,
+        5.367606,
+        5.525084,
+        4.730578,
+        4.805265,
+        5.124013,
+        5.530808,
+        5.619001,
+        5.10393,
+        5.41767,
+        5.269677,
+        5.547194,
+        5.634698,
+        5.235274,
+        6.110351,
+        5.511298,
+        6.237273,
+        4.879207,
+        5.347008,
+        5.405691
+      ]
+    },
+    "texture_slat_normalization": {
+      "mean": [
+        3.501659,
+        2.212398,
+        2.226094,
+        0.251093,
+        -0.026248,
+        -0.687364,
+        0.439898,
+        -0.928075,
+        0.029398,
+        -0.339596,
+        -0.869527,
+        1.038479,
+        -0.972385,
+        0.126042,
+        -1.129303,
+        0.455149,
+        -1.209521,
+        2.069067,
+        0.544735,
+        2.569128,
+        -0.323407,
+        2.293,
+        -1.925608,
+        -1.217717,
+        1.213905,
+        0.971588,
+        -0.023631,
+        0.10675,
+        2.021786,
+        0.250524,
+        -0.662387,
+        -0.768862
+      ],
+      "std": [
+        2.665652,
+        2.743913,
+        2.765121,
+        2.595319,
+        3.037293,
+        2.291316,
+        2.144656,
+        2.911822,
+        2.969419,
+        2.501689,
+        2.154811,
+        3.163343,
+        2.621215,
+        2.381943,
+        3.186697,
+        3.021588,
+        2.295916,
+        3.234985,
+        3.233086,
+        2.26014,
+        2.874801,
+        2.810596,
+        3.29272,
+        2.674999,
+        2.680878,
+        2.372054,
+        2.451546,
+        2.353556,
+        2.995195,
+        2.379849,
+        2.786195,
+        2.77519
+      ]
+    },
+    "shape_decoder_checkpoint": {
+      "repo_id": "microsoft/TRELLIS.2-4B",
+      "filename": "ckpts/shape_dec_next_dc_f16c32_fp16",
+      "revision": "af44b45f2e35a493886929c6d786e563ec68364d"
+    },
+    "texture_decoder_checkpoint": {
+      "repo_id": "microsoft/TRELLIS.2-4B",
+      "filename": "ckpts/tex_dec_next_dc_f16c32_fp16",
+      "revision": "af44b45f2e35a493886929c6d786e563ec68364d"
+    },
+    "weights": {
+      "checkpoint": "uniforge3d/texture/uniforge3d_stage3_texture1024_denoiser.pt",
+      "adapter_checkpoint": "uniforge3d/texture/uniforge3d_stage3_texture1024_vggt_adapter.pt",
+      "lora": {
+        "r": 128,
+        "lora_alpha": 256,
+        "lora_dropout": 0,
+        "target_modules": [
+          "to_q",
+          "to_kv",
+          "to_out",
+          "to_qkv"
+        ],
+        "bias": "none"
+      }
+    }
+  },
+  "image_preprocess": {
+    "alpha_threshold": 0,
+    "padding_factor": 1,
+    "rembg_model": "briaai/RMBG-2.0"
+  },
+  "format_version": 1,
+  "default_seed": 42,
+  "conditioner": {
+    "vggt_feature_extractor": {
+      "feature_layers": [
+        4,
+        11,
+        17,
+        23
+      ],
+      "shape_grid_resolution": 64,
+      "conditioning_layers": [
+        4,
+        7,
+        11,
+        14,
+        17,
+        20,
+        23
+      ],
+      "dtype": "bfloat16",
+      "checkpoint_path": "uniforge3d/vggt/uniforge3d_shape_texture_vggt_conditioner.pt"
+    },
+    "voxel_routers": {
+      "32": {
+        "confidence_keep_ratio": 0.95,
+        "component_iterations": 64,
+        "grid_resolution": 32,
+        "patch_grid_size": 32,
+        "image_size": 448
+      },
+      "64": {
+        "confidence_keep_ratio": 0.95,
+        "component_iterations": 64,
+        "grid_resolution": 64,
+        "patch_grid_size": 64,
+        "image_size": 448
+      }
+    }
+  }
+}

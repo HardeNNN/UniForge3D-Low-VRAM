@@ -1,0 +1,31 @@
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+.cache/
+.vscode/
+*.before_*
+/debug.py
+*.log
+/outputs/
+/weights
+/checkpoints/
+*.pt
+*.pth
+*.safetensors
+*.bin
+/build/
+/dist/
+*.egg-info/
+/.deps/
+
+# Downloaded or generated on this machine: weights, wheels, extra models, runs.
+/.venv/
+/venv/
+/whl/
+/models/
+/logs/
+/weights-urls.txt
+
+# Scratch probes kept in scripts/ for local debugging.
+/scripts/_scratch_*.py
