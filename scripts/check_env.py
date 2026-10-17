@@ -114,23 +114,31 @@ def main() -> int:
         print(f"[env] sparse conv algorithm: {conv_config.FLEX_GEMM_ALGO}")
 
     if args.config:
+        from uniforge3d.models.loaders import MODEL_GROUPS
         from uniforge3d.pipelines.uniforge3d_image_to_3d import UniForge3DImageTo3DPipeline
 
         pipeline = UniForge3DImageTo3DPipeline.from_config(
             args.config, low_vram=True, weights_dtype="float16"
         )
         # Weights otherwise load stage by stage during a run, which would let a broken
-        # checkpoint pass this check and fail halfway through a case.
-        resident = pipeline.load_all()
-        # The preprocess group holds the background remover, which is not a torch module.
-        total = sum(
-            parameter.numel()
-            for model in resident.values()
-            if isinstance(model, torch.nn.Module)
-            for parameter in model.parameters()
-        )
+        # checkpoint pass this check and fail halfway through a case. One group at a time,
+        # released once counted: holding all six is three times the committed memory a run
+        # ever asks for, and on a machine already running something else it fails there
+        # instead of in the load.
+        total = 0
+        for group in MODEL_GROUPS:
+            models = pipeline._models.get(group)
+            # The preprocess group holds the background remover, not a torch module.
+            total += sum(
+                parameter.numel()
+                for model in models.values()
+                if isinstance(model, torch.nn.Module)
+                for parameter in model.parameters()
+            )
+            pipeline._models.release(group)
         print(
-            f"[env] models loaded, {total / 1e9:.2f}B parameters resident in RAM"
+            f"[env] models built, {total / 1e9:.2f}B parameters across "
+            f"{len(MODEL_GROUPS)} groups, one at a time"
         )
         print(
             "[env] weights   half-precision copies in weights/fp16/"

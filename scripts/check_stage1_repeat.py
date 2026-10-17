@@ -1,16 +1,16 @@
 """Run stage 1 several times in one process, with identical noise, and compare the results.
 
-Repeating stage 1 in one process has failed twice with an intermittent
-``CUDA error: an illegal memory access`` (in the web UI's low-RAM mode on 2026-10-16, and in
-the A/B harness on 2026-10-17), and once with ``Stage1 decoded an empty sparse structure``.
-This is the harness that looks for it: it seeds the CPU noise before every call, so every
-call gets the same input, and captures the sampler's latent and the decoder's occupancy
-logits to say which of the two changes when it goes wrong.
+Written after two runs died with `CUDA error: an illegal memory access`, in the web UI's
+`--low-ram` mode on 2026-10-16 and in the A/B harness on 2026-10-17. Those turned out to be the
+host running out of commit (see section 5 of the notes: the same failure later surfaced as
+`OSError: The paging file is too small for this operation to complete`), not a CUDA bug, so this
+is now only a harness for exercising stage 1 repeatedly: it seeds the CPU noise before every
+call, so every call gets the same input, and captures the sampler's latent and the decoder's
+occupancy logits so a difference can be attributed to one of the two.
 
     python scripts\\check_stage1_repeat.py --calls 3
 
-Report, not a gate: it exits non-zero only if a call raises. A clean run is one where the
-latents match each other, which is not the same as the bug being gone — it is intermittent.
+It reports rather than gates, and exits non-zero only if a call raises.
 """
 
 import argparse

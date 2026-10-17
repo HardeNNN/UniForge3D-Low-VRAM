@@ -89,6 +89,15 @@ def main() -> int:
         print("[check] run scripts\\convert_weights_fp16.py first if you meant to check them")
         return 1
 
+    gone = [source for source in copies if not (make_local_config.WEIGHTS / source).is_file()]
+    if gone:
+        print(
+            f"[check] cannot verify: {len(gone)} of {len(copies)} fp32 originals are gone, "
+            "so there is nothing to compare the copies against"
+        )
+        print("[check] fetch them again with .venv\\Scripts\\python.exe scripts\\fetch.py weights")
+        return 1
+
     problems: list[str] = []
     with tempfile.TemporaryDirectory() as directory:
         original_config = Path(directory) / "originals.json"

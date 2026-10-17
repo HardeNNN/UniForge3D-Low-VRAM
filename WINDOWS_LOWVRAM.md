@@ -529,6 +529,24 @@ warning when that combination appears and points at `make_local_config.py --fp32
 writes the checkpoint-faithful config (the README's command-line section has the two lines
 that use it).
 
+#### Deleting the originals afterwards
+
+The copies are what a run reads, so once `check_fp16_weights.py` has passed, the eight fp32
+`*.pt` files can go: `weights/` drops from 40.87 GiB to 19.42 GiB. The manifest records where
+each copy came from, and `half_precision_copies()` now treats a *missing* original as "the
+copy is the source" rather than as a mismatch, so the config generator keeps the preference and
+`weights\pipeline.local.json` stays valid.
+
+Three things stop working until `scripts\fetch.py weights` brings the originals back (21.45 GiB
+of download):
+
+- the checkpoint-faithful `--weights-dtype float32` and `--no-low-vram` modes, which is what
+  `pipeline.local.fp32.json` exists for;
+- `check_fp16_weights.py`, which needs both sides to compare — it says
+  `cannot verify: N of 8 fp32 originals are gone` and exits non-zero;
+- `convert_weights_fp16.py --revert`, which refuses, because deleting the copies would leave the
+  fp32 config naming files that do not exist.
+
 #### Still open: building the denoisers in fp16
 
 That is the 12.9 GB half of the peak, and no disk conversion can touch it. It means
@@ -556,25 +574,36 @@ against 1568 voxels). The pins are not a speed problem, and the fp16 constructio
 about host memory rather than time: generation is as fast as it is for reasons that have
 nothing to do with this change.
 
-#### Open: repeating stage 1 in one process
+#### Host commit, not CUDA: what the access violations were
 
-Stage 1 has failed twice with an intermittent `CUDA error: an illegal memory access`, both
-times on a *second* stage-1 call in one process: once in the web UI's `--low-ram` mode on
-2026-10-16 (case02, sampling step 10 of 12), and once in the A/B harness on 2026-10-17, where a
-second pipeline's structure model died in the VGGT attention at step 1 of 12. It does not
-reproduce on demand: three seeded calls in one process pass, and four A/B runs of three calls
-each, in separate processes, pass. The same harness once produced `Stage1 decoded an empty
-sparse structure`, also on a second call.
+Two runs have died with `CUDA error: an illegal memory access` — the web UI's `--low-ram` mode
+on 2026-10-16 (case02, sampling step 10 of 12) and the A/B harness on 2026-10-17 (a second
+pipeline's structure model, step 1 of 12) — and one with `Stage1 decoded an empty sparse
+structure`. On 2026-10-17 the same class of failure reproduced with a readable error instead of
+an access violation, on a script that loads all six groups at once:
 
-`scripts\check_stage1_repeat.py` is the harness for it: seeded noise, so repeated calls should
-produce matching latents, plus latent and decoder-logit statistics to show which side changes.
-It reports rather than gates, because the failure is intermittent.
+```
+OSError: The paging file is too small for this operation to complete. (os error 1455)
+```
 
-Two things worth knowing either way. The first stage-1 call in a process has been measured at
-42.0 s against 20.3 s for later calls with identical noise, and it produced a different latent
-(a 6.39 maximum difference over a ±4.6 range), so the stage-time spread quoted earlier is at
-least partly warm-up, not run-to-run noise. And the UI's low-RAM mode is the first place to
-look, because it rebuilds and reruns the stage for every job.
+The machine at that moment: 82.2 GB of commit limit (63.9 GB of RAM plus a page file set to
+16 GB initial / 32 GB maximum), **65.7 GB already committed and 16.5 GB of headroom**, of which
+the web UI server held 32.55 GB on its own and ComfyUI another 4 GB. A full `load_all()` asks for
+two to three times what a run ever asks for, because a run holds one group at a time. Windows
+reports an exhausted commit as an access violation in whatever allocates next, which is why the
+earlier two looked like CUDA bugs in the VGGT attention: they were the host running out, not the
+card.
+
+`scripts/check_env.py --config` now builds the six groups one at a time and releases each, which
+is what a run does anyway, and passes with the server still resident (commit headroom 23.2 GB).
+`scripts\check_stage1_repeat.py` remains the harness for repeating the stage, but nothing points
+at repeating stage 1 as the cause. If you run the UI and a CLI batch together, give the page file
+more room: it is capped at 32 GB, and a resident server plus a case is already ~40 GB of commit.
+
+Separately, and still open: the *first* stage-1 call in a process has been measured at 42.0 s
+against 20.3 s for later calls with identical noise, and it produced a different latent (a 6.39
+maximum difference over a ±4.6 range), so the stage-time spread quoted earlier is at least partly
+warm-up rather than run-to-run noise.
 
 
 ### Deferred: unwrapping on the GPU (surveyed 2026-10-16)

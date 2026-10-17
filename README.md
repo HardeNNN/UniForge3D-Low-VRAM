@@ -56,6 +56,14 @@ method, in [WINDOWS_LOWVRAM.md](WINDOWS_LOWVRAM.md).
   `scripts/check_fp16_weights.py` proves the copies bit-identical to what the fp32 files
   produce. They also take about 15 s off each `--low-ram` case, which reloads the weights
   every time.
+- **The fp32 originals can be deleted afterwards.** A run reads the copies, so once the check
+  above has passed the eight `.pt` files are only needed for the checkpoint-faithful `float32`
+  and `--no-low-vram` modes; deleting them takes `weights/` from 41 GiB to 19 GiB. The tools
+  stay honest about it: the local config still points at the copies (the manifest records what
+  each came from, and a missing original is not a mismatch), `check_fp16_weights.py` stops with
+  "cannot verify" instead of reporting a pass, and `convert_weights_fp16.py --revert` refuses
+  rather than leaving the fp32 config pointing at nothing. `scripts/fetch.py weights` brings the
+  originals back.
 - **A web UI** (`webui.py`): load 2-4 images, watch progress, inspect the GLB, download it,
   and optionally save the baked texture maps beside it.
 - **Texture maps on request.** `--save-textures` (and the UI checkbox, ticked by default)
@@ -236,10 +244,12 @@ which carry commercial-use conditions. Read those model cards before commercial 
   section for checkpoint-faithful runs.
 - **The fetch stalls.** Re-run it; every chunk resumes. `--jobs 1 --connections 4` is the
   gentlest setting.
-- **A case fails with `Stage1 decoded an empty sparse structure`, or the process dies with a
-  CUDA illegal access.** Both are intermittent and land on a second stage-1 run inside one
-  process; re-run the case. `scripts\check_stage1_repeat.py` is the harness that looks for it
-  (section 5 of the notes).
+- **A run dies with a CUDA `illegal memory access`, or `Stage1 decoded an empty sparse
+  structure`.** The access violations have a known cause: the host running out of commit, which
+  Windows reports that way. Check how much is already committed (`Get-CimInstance
+  Win32_OperatingSystem` → `FreeVirtualMemory`) before blaming the card — a resident web UI plus
+  a CLI batch is ~40 GB, and the page file here is capped at 32 GB. Re-run the case; the empty
+  structure is a rare sampling failure on the random noise.
 - **`python infer.py` with no `--config` starts downloading from Hugging Face.** Without it,
   infer.py falls back to the upstream `--model xibushu/UniForge3D` path. Pass
   `--config weights\pipeline.local.json`, which is what the install produces and what every

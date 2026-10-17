@@ -244,6 +244,20 @@ def main() -> int:
     out_root = (args.out or root / "fp16").resolve()
 
     if args.revert:
+        # Deleting the copies is only safe while the originals they came from are still
+        # there: without them the fp32 config would name files that do not exist.
+        manifest_path = out_root / MANIFEST
+        gone: list[str] = []
+        if manifest_path.is_file():
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            gone = [source for source in manifest.get("sources", {}) if not (root / source).is_file()]
+        if gone:
+            print(
+                f"[fp16] not reverting: {len(gone)} of the originals this conversion came from "
+                "have been deleted, so the fp32 config would point at nothing"
+            )
+            print("[fp16] fetch them again with: .venv\\Scripts\\python.exe scripts\\fetch.py weights")
+            return 1
         if out_root.is_dir():
             shutil.rmtree(out_root)
             print(f"[fp16] removed {out_root}")

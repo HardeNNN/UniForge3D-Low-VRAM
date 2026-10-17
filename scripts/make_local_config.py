@@ -99,9 +99,14 @@ def half_precision_copies() -> dict[str, str]:
         if not copy.is_file():
             print(f"[config] ignoring {entry['copy']}: not found, re-run the conversion")
             continue
-        if not original.is_file() or original.stat().st_size != entry["size"]:
-            print(f"[config] ignoring {entry['copy']}: {source} changed since the conversion")
-            continue
+        if original.is_file():
+            if original.stat().st_size != entry["size"]:
+                print(f"[config] ignoring {entry['copy']}: {source} changed since the conversion")
+                continue
+        else:
+            # The original is only needed to make the copy and to run the fp32 modes; an
+            # fp16 run reads the copy, so a deleted original is no reason to refuse it.
+            print(f"[config] using {entry['copy']}: {source} has been deleted to save space")
         copies[source] = entry["copy"]
     return copies
 
