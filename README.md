@@ -4,6 +4,10 @@
 [![Hugging Face](https://img.shields.io/badge/Hugging_Face-Models-FFD21E?style=flat&logo=huggingface&logoColor=FFD21E)](https://huggingface.co/xibushu/UniForge3D)
 [![Paper](https://img.shields.io/badge/Paper-arXiv%3A2610.15357-B31B1B?style=flat&logo=arxiv&logoColor=white)](https://arxiv.org/abs/2610.15357)
 
+<p align="center">
+  <img src="assets/teaser.png" alt="UniForge3D: Joint 3D Reconstruction and Generation in a Shared Anchor-Guided Space" width="100%">
+</p>
+
 UniForge3D generates a complete 3D asset from a handful of sparse, unposed photos of one
 object. It jointly models reconstruction and generation in a shared anchor-guided space, so
 the parts you photographed stay faithful and the parts you did not are generated.
